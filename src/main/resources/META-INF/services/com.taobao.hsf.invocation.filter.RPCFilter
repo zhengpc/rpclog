@@ -1,0 +1,2 @@
+com.alibaba.china.cntools.rpclog.filter.hsf.HSFServerLogFilter
+com.alibaba.china.cntools.rpclog.filter.hsf.HSFClientLogFilter
