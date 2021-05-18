@@ -1,0 +1,196 @@
+CREATE TABLE IF NOT EXISTS ali_cbu_trade_rpclog_analyze_result (
+	app_name STRING COMMENT '应用名称',
+    provider_id STRING COMMENT '提供服务',
+    consumer_id STRING COMMENT '依赖服务',
+    blocked_count STRING COMMENT '阻断次数',
+    degraded_count STRING COMMENT '降级次数'
+)
+COMMENT '交易调用链路分析结果表'
+PARTITIONED BY (
+	pt STRING COMMENT '分区'
+)
+LIFECYCLE 365;
+
+
+INSERT OVERWRITE TABLE ali_cbu_trade_rpclog_analyze_result PARTITION (pt='${bizdate}')
+select
+    (case when blacklist.app_name!='\N' then blacklist.app_name when whitelist.app_name!='\N' then whitelist.app_name end) as app_name,
+    (case when blacklist.provider_id!='\N' then blacklist.provider_id when whitelist.provider_id!='\N' then whitelist.provider_id end) as provider_id,
+    (case when blacklist.consumer_id!='\N' then blacklist.consumer_id when whitelist.consumer_id!='\N' then whitelist.consumer_id end) as consumer_id,
+    (case when blacklist.err_count>0 then blacklist.err_count else 0 end) as blocked_count,
+    (case when whitelist.succ_count>0 then whitelist.succ_count else 0 end) as degraded_count
+from (
+    -- 强依赖黑名单，提供服务失败且仅有一个依赖服务异常，则将该依赖服务拉入黑名单
+    select app_name, provider_id, consumer_id, count(1) as err_count from (
+        select
+            provider.app_name as app_name,
+            provider.trace_id as trace_id,
+            provider.provider_id as provider_id,
+            consumer.consumer_id as consumer_id
+        from (
+            select a.app_name, a.trace_id, a.consumer_id from (
+                select
+                    app_name,
+                    trace_id,
+                    service_id as consumer_id
+                from
+                    tradedev1688.ali_cbu_trade_rpclog_digest
+                where
+                    pt >= to_char(dateadd(datetrunc(getdate(),'DD'),'-${xday}','dd'),'yyyymmdd')
+                    -- and app_name = '${appname}'
+                    and is_success = 'N'
+                    and log_type = 'consumer_digest'
+                    group by app_name, trace_id, service_id
+            ) a join (
+                -- 强依赖黑名单，提供服务失败且仅有一个依赖服务异常，则将该依赖服务拉入黑名单
+                    select app_name, trace_id from (
+                        select app_name, trace_id, count(distinct(log_type)) as cnt from (
+                            -- 提供服务失败且仅有一个依赖服务异常，避免模棱两可、含糊不清的情况
+                            select
+                                app_name,
+                                trace_id,
+                                log_type,
+                                count(1) as cnt
+                            from
+                                tradedev1688.ali_cbu_trade_rpclog_digest
+                            where
+                                pt >= to_char(dateadd(datetrunc(getdate(),'DD'),'-${xday}','dd'),'yyyymmdd')
+                                -- and app_name = '${appname}'
+                                and is_success = 'N'
+                            group by app_name, trace_id, log_type having cnt = 1
+                        ) group by app_name, trace_id having cnt = 2
+                    )
+                ) b on a.trace_id = b.trace_id and a.app_name = b.app_name
+        ) consumer join (
+            select a.app_name, a.trace_id, a.provider_id from (
+                select
+                    app_name,
+                    trace_id,
+                    service_id as provider_id
+                from
+                    tradedev1688.ali_cbu_trade_rpclog_digest
+                where
+                    pt >= to_char(dateadd(datetrunc(getdate(),'DD'),'-${xday}','dd'),'yyyymmdd')
+                    -- and app_name = '${appname}'
+                    and is_success = 'N'
+                    and log_type = 'provider_digest'
+            ) a join (
+                -- 强依赖黑名单，提供服务失败且仅有一个依赖服务异常，则将该依赖服务拉入黑名单
+                select app_name, trace_id from (
+                    select app_name, trace_id, count(distinct(log_type)) as cnt from (
+                        -- 提供服务失败且仅有一个依赖服务异常，避免模棱两可、含糊不清的情况
+                        select
+                            app_name,
+                            trace_id,
+                            log_type,
+                            count(1) as cnt
+                        from
+                            tradedev1688.ali_cbu_trade_rpclog_digest
+                        where
+                            pt >= to_char(dateadd(datetrunc(getdate(),'DD'),'-${xday}','dd'),'yyyymmdd')
+                            -- and app_name = '${appname}'
+                            and is_success = 'N'
+                        group by app_name, trace_id, log_type having cnt = 1
+                    ) group by app_name, trace_id having cnt = 2
+                )
+            ) b on a.app_name  = b.app_name and a.trace_id = b.trace_id
+        ) provider on consumer.app_name = provider.app_name and consumer.trace_id = provider.trace_id
+    ) group by app_name, provider_id, consumer_id
+) blacklist full outer join (
+    -- 弱依赖白名单，依赖服务异常但提供服务正常，则将该依赖服务拉入白名单
+    select app_name, provider_id, consumer_id, count(1) as succ_count from (
+        select
+            provider.app_name as app_name,
+            provider.trace_id as trace_id,
+            provider.provider_id as provider_id,
+            consumer.consumer_id as consumer_id
+        from (
+            select a.app_name, a.trace_id, a.consumer_id from (
+                select
+                    app_name,
+                    trace_id,
+                    service_id as consumer_id
+                from
+                    tradedev1688.ali_cbu_trade_rpclog_digest
+                where
+                    pt >= to_char(dateadd(datetrunc(getdate(),'DD'),'-${xday}','dd'),'yyyymmdd')
+                    -- and app_name = '${appname}'
+                    and is_success = 'N'
+                    and log_type = 'consumer_digest'
+                group by app_name, trace_id, service_id
+            ) a join (
+                select a.app_name, a.trace_id from (
+                    select
+                        app_name,
+                        trace_id,
+                        count(distinct(log_type)) as cnt
+                    from
+                        tradedev1688.ali_cbu_trade_rpclog_digest
+                    where
+                        pt >= to_char(dateadd(datetrunc(getdate(),'DD'),'-${xday}','dd'),'yyyymmdd')
+                        -- and app_name = '${appname}'
+                        and is_success = 'N'
+                    group by app_name, trace_id having cnt = 1
+                ) a join (
+                    -- 避免出现跨天的情况
+                    select app_name, trace_id from (
+                        select
+                            app_name,
+                            trace_id,
+                            count(distinct(log_type)) as cnt
+                        from
+                            tradedev1688.ali_cbu_trade_rpclog_digest
+                        where
+                            pt >= to_char(dateadd(datetrunc(getdate(),'DD'),'-${xday}','dd'),'yyyymmdd')
+                            -- and app_name = '${appname}'
+                        group by app_name, trace_id having cnt = 2
+                    )
+                ) b on a.app_name = b.app_name  and a.trace_id = b.trace_id
+            ) b on a.app_name = b.app_name  and a.trace_id =  b.trace_id
+        ) consumer join (
+            select a.app_name, a.trace_id, a.provider_id from (
+                select
+                    app_name,
+                    trace_id,
+                    service_id as provider_id
+                from
+                    tradedev1688.ali_cbu_trade_rpclog_digest
+                where
+                    pt >= to_char(dateadd(datetrunc(getdate(),'DD'),'-${xday}','dd'),'yyyymmdd')
+                    -- and app_name = '${appname}'
+                    and is_success = 'Y'
+                    and log_type = 'provider_digest'
+                group by app_name, trace_id, service_id
+            ) a join (
+                select a.app_name, a.trace_id from (
+                    select
+                        app_name,
+                        trace_id,
+                        count(distinct(log_type)) as cnt
+                    from
+                        tradedev1688.ali_cbu_trade_rpclog_digest
+                    where
+                        pt >= to_char(dateadd(datetrunc(getdate(),'DD'),'-${xday}','dd'),'yyyymmdd')
+                        -- and app_name = '${appname}'
+                        and is_success = 'N'
+                    group by app_name, trace_id having cnt = 1
+                ) a join (
+                    -- 避免出现跨天的情况
+                    select app_name, trace_id from (
+                        select
+                            app_name,
+                            trace_id,
+                            count(distinct(log_type)) as cnt
+                        from
+                            tradedev1688.ali_cbu_trade_rpclog_digest
+                        where
+                            pt >= to_char(dateadd(datetrunc(getdate(),'DD'),'-${xday}','dd'),'yyyymmdd')
+                            -- and app_name = '${appname}'
+                        group by app_name, trace_id having cnt = 2
+                    )
+                ) b on a.app_name  = b.app_name and a.trace_id = b.trace_id
+            ) b on a.app_name = b.app_name  and a.trace_id  = b.trace_id
+        ) provider on consumer.app_name = provider.app_name and consumer.trace_id = provider.trace_id
+    ) group by app_name, provider_id, consumer_id
+) whitelist on blacklist.app_name = whitelist.app_name and blacklist.consumer_id = whitelist.consumer_id and blacklist.provider_id =  whitelist.provider_id
+;
