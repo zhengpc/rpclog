@@ -9,9 +9,13 @@
   </parent>  
   <groupId>com.alibaba.china.cntools</groupId>  
   <artifactId>rpclog-hsf</artifactId>  
-  <version>1.2.20</version>  
-  <packaging>jar</packaging>  
+  <version>2.0.6</version>  
+  <packaging>pom</packaging>  
   <name>rpclog</name>  
+  <modules> 
+    <module>rpclog-core</module>  
+    <module>rpclog-config</module> 
+  </modules>  
   <properties> 
     <java.source.version>1.8</java.source.version>  
     <java.target.version>1.8</java.target.version>  
@@ -20,91 +24,103 @@
     <guava.version>19.0</guava.version>  
     <slf4j.version>1.7.7</slf4j.version> 
   </properties>  
-  <dependencies> 
-    <dependency> 
-      <groupId>com.taobao.hsf</groupId>  
-      <artifactId>hsf-core</artifactId>  
-      <version>2.2.10.1</version> 
-    </dependency>  
-    <dependency> 
-      <groupId>com.taobao.hsf</groupId>  
-      <artifactId>hsf.common</artifactId>  
-      <version>2.1.1.7</version> 
-    </dependency>  
-    <dependency> 
-      <groupId>com.taobao.eagleeye</groupId>  
-      <artifactId>eagleeye-core</artifactId>  
-      <version>1.2.5</version> 
-    </dependency>  
-    <dependency> 
-      <groupId>com.taobao.csp</groupId>  
-      <artifactId>sentinel</artifactId>  
-      <version>3.9.19</version>  
-      <exclusions> 
-        <exclusion> 
-          <groupId>org.springframework</groupId>  
-          <artifactId>spring</artifactId> 
-        </exclusion>  
-        <exclusion> 
-          <groupId>org.slf4j</groupId>  
-          <artifactId>slf4j-log4j12</artifactId> 
-        </exclusion>  
-        <exclusion> 
-          <groupId>org.slf4j</groupId>  
-          <artifactId>slf4j-api</artifactId> 
-        </exclusion>  
-        <exclusion> 
-          <groupId>log4j</groupId>  
-          <artifactId>log4j</artifactId> 
-        </exclusion>  
-        <exclusion> 
-          <groupId>com.taobao.diamond</groupId>  
-          <artifactId>diamond-client</artifactId> 
-        </exclusion> 
-      </exclusions> 
-    </dependency>  
-    <dependency> 
-      <groupId>com.google.guava</groupId>  
-      <artifactId>guava</artifactId>  
-      <version>${guava.version}</version> 
-    </dependency>  
-    <dependency> 
-      <groupId>org.apache.commons</groupId>  
-      <artifactId>commons-lang3</artifactId>  
-      <version>3.3.2</version> 
-    </dependency>  
-    <dependency> 
-      <groupId>org.slf4j</groupId>  
-      <artifactId>slf4j-api</artifactId>  
-      <version>${slf4j.version}</version> 
-    </dependency>  
-    <dependency> 
-      <groupId>com.alibaba.china.cntools</groupId>  
-      <artifactId>diamond-config-helper</artifactId>  
-      <version>1.0.0</version>  
-      <exclusions> 
-        <exclusion> 
-          <groupId>log4j</groupId>  
-          <artifactId>log4j</artifactId> 
-        </exclusion>  
-        <exclusion> 
-          <groupId>org.slf4j</groupId>  
-          <artifactId>slf4j-log4j12</artifactId> 
-        </exclusion> 
-      </exclusions> 
-    </dependency>  
-    <!-- 全链路压测工具类 -->  
-    <dependency> 
-      <groupId>com.taobao.common</groupId>  
-      <artifactId>fulllinkstresstesting</artifactId>  
-      <version>0.9.9.5</version> 
-    </dependency>  
-    <dependency> 
-      <groupId>org.codehaus.groovy</groupId>  
-      <artifactId>groovy-all</artifactId>  
-      <version>2.4.9</version> 
-    </dependency> 
-  </dependencies>  
+  <dependencyManagement> 
+    <dependencies> 
+      <dependency> 
+        <groupId>com.taobao.hsf</groupId>  
+        <artifactId>hsf-core</artifactId>  
+        <version>2.2.10.1</version>  
+        <scope>provided</scope> 
+      </dependency>  
+      <dependency> 
+        <groupId>com.taobao.hsf</groupId>  
+        <artifactId>hsf.common</artifactId>  
+        <version>2.1.1.7</version>  
+        <scope>provided</scope> 
+      </dependency>  
+      <dependency> 
+        <groupId>com.taobao.eagleeye</groupId>  
+        <artifactId>eagleeye-core</artifactId>  
+        <version>1.2.5</version>  
+        <scope>provided</scope> 
+      </dependency>  
+      <dependency> 
+        <groupId>com.taobao.csp</groupId>  
+        <artifactId>sentinel</artifactId>  
+        <version>3.9.19</version>  
+        <scope>provided</scope> 
+      </dependency>  
+      <dependency> 
+        <groupId>org.aspectj</groupId>  
+        <artifactId>aspectjweaver</artifactId>  
+        <version>1.9.7</version>  
+        <scope>provided</scope> 
+      </dependency>  
+      <dependency> 
+        <groupId>org.aspectj</groupId>  
+        <artifactId>aspectjrt</artifactId>  
+        <version>1.9.7</version>  
+        <scope>provided</scope> 
+      </dependency>  
+      <dependency> 
+        <groupId>org.springframework</groupId>  
+        <artifactId>spring-context</artifactId>  
+        <version>5.3.22</version>  
+        <scope>provided</scope> 
+      </dependency>  
+      <dependency> 
+        <groupId>org.springframework</groupId>  
+        <artifactId>spring-expression</artifactId>  
+        <version>5.3.22</version>  
+        <scope>provided</scope> 
+      </dependency>  
+      <dependency> 
+        <groupId>com.google.guava</groupId>  
+        <artifactId>guava</artifactId>  
+        <version>${guava.version}</version> 
+      </dependency>  
+      <dependency> 
+        <groupId>org.apache.commons</groupId>  
+        <artifactId>commons-lang3</artifactId>  
+        <version>3.3.2</version> 
+      </dependency>  
+      <dependency> 
+        <groupId>org.slf4j</groupId>  
+        <artifactId>slf4j-api</artifactId>  
+        <version>${slf4j.version}</version> 
+      </dependency>  
+      <dependency> 
+        <groupId>com.alibaba.china.cntools</groupId>  
+        <artifactId>diamond-config-helper</artifactId>  
+        <version>1.1.0</version>  
+        <exclusions> 
+          <exclusion> 
+            <groupId>log4j</groupId>  
+            <artifactId>log4j</artifactId> 
+          </exclusion>  
+          <exclusion> 
+            <groupId>org.slf4j</groupId>  
+            <artifactId>slf4j-log4j12</artifactId> 
+          </exclusion> 
+        </exclusions> 
+      </dependency>  
+      <dependency> 
+        <groupId>com.alibaba</groupId>  
+        <artifactId>fastjson</artifactId>  
+        <version>1.2.69</version> 
+      </dependency>  
+      <dependency> 
+        <groupId>org.reflections</groupId>  
+        <artifactId>reflections</artifactId>  
+        <version>0.9.12</version> 
+      </dependency>  
+      <dependency> 
+        <groupId>org.projectlombok</groupId>  
+        <artifactId>lombok</artifactId>  
+        <version>1.18.6</version> 
+      </dependency> 
+    </dependencies> 
+  </dependencyManagement>  
   <build> 
     <sourceDirectory>src/main/java</sourceDirectory>  
     <resources> 
@@ -139,5 +155,5 @@
       </plugin> 
     </plugins> 
   </build>  
-  <contributors><contributor><properties><provider>pengcheng.zhengpc@alibaba-inc.com</provider><codeName>null</codeName><codeUrl>git@gitlab.alibaba-inc.com:cntools/rpclog.git commit:7e99dd1</codeUrl><description>contributors added by SCM Plugin, please don't modify it!</description></properties></contributor></contributors>
+  <contributors><contributor><properties><provider>pengcheng.zhengpc@alibaba-inc.com</provider><codeName>null</codeName><codeUrl>git@gitlab.alibaba-inc.com:cntools/rpclog.git commit:a4e613b</codeUrl><description>contributors added by SCM Plugin, please don't modify it!</description></properties></contributor></contributors>
 </project>
